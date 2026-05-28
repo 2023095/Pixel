@@ -2,10 +2,15 @@ import 'dart:async';
 
 import 'package:flame/components.dart';
 import 'package:flame_tiled/flame_tiled.dart';
+import 'package:pixel/components/background_tile.dart';
+import 'package:pixel/components/checkpoint.dart';
 import 'package:pixel/components/collision_block.dart';
+import 'package:pixel/components/fruit.dart';
 import 'package:pixel/components/player.dart';
+import 'package:pixel/components/saw.dart';
+import 'package:pixel/pixel.dart';
 
-class Level extends World {
+class Level extends World with HasGameRef<Pixel>{
   final String levelName;
   final Player player;
   Level({required this.levelName, required this.player});
@@ -18,6 +23,28 @@ class Level extends World {
 
     add(level);
 
+    _scrollingBackground();
+    _spawningObjects();
+    _addCollisions();
+
+    return super.onLoad();
+  }
+
+  void _scrollingBackground() {
+    final backgroundLayer = level.tileMap.getLayer('Background');
+
+    if (backgroundLayer != null) {
+      final backgroundColor =
+          backgroundLayer.properties.getValue('BackgroundColor');
+      final backgroundTile = BackgroundTile(
+        color: backgroundColor ?? 'Gray',
+        position: Vector2(0, 0),
+      );
+      add(backgroundTile);
+    }
+  }
+
+  void _spawningObjects() {
     final spawnPointsLayer = level.tileMap.getLayer<ObjectGroup>('Spawnpoints');
 
     if (spawnPointsLayer != null) {
@@ -25,17 +52,48 @@ class Level extends World {
         switch (spawnPoint.class_) {
           case 'Player':
             player.position = Vector2(spawnPoint.x, spawnPoint.y);
+            player.scale.x = 1;
             add(player);
+            break;
+          case 'Fruit':
+            final fruit = Fruit(
+              fruit: spawnPoint.name,
+              position: Vector2(spawnPoint.x, spawnPoint.y),
+              size: Vector2(spawnPoint.width, spawnPoint.height),
+            );
+            add(fruit);
+            break;
+          case 'Saw':
+            final isVertical = spawnPoint.properties.getValue('isVertical');
+            final offNeg = spawnPoint.properties.getValue('offNeg');
+            final offPos = spawnPoint.properties.getValue('offPos');
+            final saw = Saw(
+              isVertical: isVertical,
+              offNeg: offNeg,
+              offPos: offPos,
+              position: Vector2(spawnPoint.x, spawnPoint.y),
+              size: Vector2(spawnPoint.width, spawnPoint.height),
+            );
+            add(saw);
+            break;
+          case 'Checkpoint':
+            final checkpoint = Checkpoint(
+              position: Vector2(spawnPoint.x, spawnPoint.y),
+              size: Vector2(spawnPoint.width, spawnPoint.height),
+            );
+            add(checkpoint);
             break;
           default:
         }
       }
     }
-    
+  }
+
+  void _addCollisions() {
     final collisionsLayer = level.tileMap.getLayer<ObjectGroup>('Collisions');
 
-    if(collisionsLayer != null) {
-      for(final collision in collisionsLayer.objects) {
+    if (collisionsLayer != null) {
+      for (final collision in collisionsLayer.objects) {
         switch (collision.class_) {
           case 'Platform':
             final platform = CollisionBlock(
@@ -57,6 +115,5 @@ class Level extends World {
       }
     }
     player.collisionBlocks = collisionBlocks;
-    return super.onLoad();
   }
 }

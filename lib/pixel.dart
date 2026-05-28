@@ -1,41 +1,35 @@
 import 'dart:async';
-import 'dart:ui';
-
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/painting.dart';
+import 'package:pixel/components/jump_button.dart';
 import 'package:pixel/components/player.dart';
 import 'package:pixel/components/level.dart';
 
 class Pixel extends FlameGame with 
-  HasKeyboardHandlerComponents, DragCallbacks{
+  HasKeyboardHandlerComponents, DragCallbacks, HasCollisionDetection, TapCallbacks {
   @override
   Color backgroundColor() => const Color(0xFF211F30);
-  late final CameraComponent cam;
-  Player player = Player(character: 'Virtual Guy');
+  late CameraComponent cam;
+  Player player = Player(character: 'Ninja Frog');
   late JoystickComponent joystick;
-  bool showJoystick = false;
+  bool showControls = true;
+  bool playSounds = true;
+  double soundVolume = 1.0;
+  List<String> levelNames = ['Level_01', 'Level_03', 'Level_02'];
+  int currentLevelIndex = 0;
 
   @override
   FutureOr<void> onLoad() async {
 
     await images.loadAllImages();
 
-    final world = Level(
-      player: player,
-      levelName: 'Level_01',
-  );
+    _loadLevel();
 
-    cam = CameraComponent.withFixedResolution(
-      world: world, width: 640, height: 360);
-    cam.viewfinder.anchor = Anchor.topLeft;
-    cam.priority = 1;
-
-    addAll([cam, world]);
-
-    if (showJoystick) {
+    if (showControls) {
       addJoystick();
+      add(JumpButton());
     }
 
     addJoystick();
@@ -45,7 +39,7 @@ class Pixel extends FlameGame with
 
   @override
   void update(double dt) {
-    if(showJoystick) {
+    if(showControls) {
       updateJoystick();
     }
     super.update(dt);
@@ -53,6 +47,7 @@ class Pixel extends FlameGame with
 
   void addJoystick() {
     joystick = JoystickComponent(
+      priority: 0,
       knob: SpriteComponent(
         sprite: Sprite(
           images.fromCache('HUD/Knob.png'),
@@ -64,7 +59,6 @@ class Pixel extends FlameGame with
         ),
       ),
       margin: const EdgeInsets.only(left: 32, bottom: 32),
-      priority: 2,
     );
 
     add(joystick);
@@ -86,5 +80,33 @@ class Pixel extends FlameGame with
         player.horizontalMovement = 0;
         break;
     }
+  }
+  
+  void loadNextLevel() {
+    if (currentLevelIndex < levelNames.length - 1) {
+      currentLevelIndex++;
+      _loadLevel();
+    } else {
+      currentLevelIndex = 0;
+      _loadLevel();
+    }
+  }
+
+  void _loadLevel() {
+    Future.delayed(const Duration(seconds: 1,), (){
+    Level world = Level(
+      player: player,
+      levelName: levelNames[currentLevelIndex],
+    );
+
+    cam = CameraComponent.withFixedResolution(
+      world: world, 
+      width: 640, 
+      height: 360,
+      );
+    cam.viewfinder.anchor = Anchor.topLeft;
+
+    addAll([cam, world]);
+    });
   }
 }
